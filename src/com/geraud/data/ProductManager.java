@@ -16,17 +16,63 @@ public class ProductManager {
     private Map<Product, List<Review>> products = new HashMap<>();
 //    private Product product;
 //    private Review[] reviews = new Review[5];
-    private Locale locale;
-    private ResourceBundle resourceBundle;
-    private DateTimeFormatter dateTimeFormatter;
-    private NumberFormat numberFormat;
+    private static Map<String , ResourceFormatter> formatters =
+        Map.of("en-GB", new ResourceFormatter(Locale.UK),
+                "en-US", new ResourceFormatter(Locale.US),
+                "fr-FR", new ResourceFormatter(Locale.FRANCE),
+                "ru-RU", new ResourceFormatter(new Locale("ru","RU")),
+                "zh-CN", new ResourceFormatter(new Locale("zh","CN")));
+    private ResourceFormatter formatter;
 
     public ProductManager(Locale locale) {
-        this.locale = locale;
-        resourceBundle = ResourceBundle.getBundle("com.geraud.data.resources" , locale);
-        dateTimeFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).localizedBy(locale);
-        numberFormat = NumberFormat.getCurrencyInstance(locale);
+        this(locale.toLanguageTag());
     }
+
+    public ProductManager(String languageTag) {
+        changeLocale(languageTag);
+    }
+
+    public void changeLocale (String languageTag) {
+        formatter = formatters.getOrDefault(languageTag , formatters.get("fr-FR"));
+    }
+
+    public static Set<String> getSupportedLocales(){
+        return formatters.keySet();
+    }
+
+    private static class ResourceFormatter {
+        private Locale locale;
+        private ResourceBundle resourceBundle;
+        private DateTimeFormatter dateTimeFormatter;
+        private NumberFormat numberFormat;
+
+        private ResourceFormatter (Locale locale){
+            this.locale = locale;
+            resourceBundle = ResourceBundle.getBundle("com.geraud.data.resources" , locale);
+            dateTimeFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).localizedBy(locale);
+            numberFormat = NumberFormat.getCurrencyInstance(locale);
+        }
+
+        private String formatProduct(Product product){
+            return MessageFormat.format(resourceBundle.getString("product"),
+                    product.getName(),
+                    numberFormat.format(product.getPrice()),
+                    product.getRating().getStars(),
+                    dateTimeFormatter.format(product.getBestBefore()));
+        }
+
+        private String formatReview(Review review){
+            return MessageFormat.format(resourceBundle.getString("review"),
+                    review.getRating().getStars(),
+                    review.getComments());
+        }
+
+        private String getText(String key) {
+            return resourceBundle.getString(key);
+        }
+    }
+
+
 
     public Product createProduct(int id , String name , BigDecimal price , Rating rating , LocalDate bestBefore){
         Product product =new Food(id, name, price, rating, bestBefore);
@@ -67,22 +113,16 @@ public class ProductManager {
         List<Review> reviews = products.get(product);
         Collections.sort(reviews);
         StringBuilder txt = new StringBuilder();
-        txt.append(MessageFormat.format(resourceBundle.getString("product"),
-                product.getName(),
-                numberFormat.format(product.getPrice()),
-                product.getRating().getStars(),
-                dateTimeFormatter.format(product.getBestBefore())));
+        txt.append(formatter.formatProduct(product));
         txt.append('\n');
         if (reviews.isEmpty()){
-            txt.append(resourceBundle.getString("no.reviews"));
+            txt.append(formatter.getText("no.reviews"));
             txt.append('\n');
         }
 
         for(Review review : reviews) {
 
-            txt.append(MessageFormat.format(resourceBundle.getString("review"),
-                        review.getRating().getStars(),
-                        review.getComments()));
+            txt.append(formatter.formatReview(review));
             txt.append('\n');
         }
 
@@ -100,5 +140,16 @@ public class ProductManager {
         }
 
         return result;
+    }
+
+    public void printProducts (Comparator<Product> sorter) {
+        List<Product> productList = new ArrayList<>(products.keySet());
+        productList.sort(sorter);
+        StringBuilder txt = new StringBuilder();
+        for (Product product: productList) {
+            txt.append(formatter.formatProduct(product));
+            txt.append('\n');
+        }
+        System.out.print(txt);
     }
 }
