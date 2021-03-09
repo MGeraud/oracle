@@ -61,11 +61,16 @@ public class Shop {
         pm.reviewProduct(106, Rating.FOUR_STAR,"Good p6!");
         pm.reviewProduct(106, Rating.FIVE_STAR,"Perfect p6!");
         pm.reviewProduct(106, Rating.FIVE_STAR,"Quite cold p6!");
-//        pm.printProductReport(106);
+        pm.printProductReport(106);
 
 
         Comparator<Product> ratingComparator = Comparator.comparing(Product::getRating).reversed();
         Comparator<Product> priceComparator = Comparator.comparing(Product::getPrice);
-        pm.printProducts(ratingComparator.thenComparing(priceComparator));
+
+//        pm.printProducts(ratingComparator.thenComparing(priceComparator));
+        pm.printProducts(p -> p.getPrice().floatValue() < 2 , ratingComparator.thenComparing(priceComparator));
+        pm.getDiscounts().forEach(
+                (rating, discount) -> System.out.println(rating+"\t" + discount)
+        );
     }
 }
